@@ -1,0 +1,1 @@
+PATH_TESSERACT = '/usr/bin/tesseract'
