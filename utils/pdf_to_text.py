@@ -13,30 +13,30 @@ pytesseract.pytesseract.tesseract_cmd = PATH_TESSERACT
 def clean_text(text):
     """Удаляет переносы слов из текста."""
     cleaned_text = re.sub(r'(\w+)-\s*(\w+)', r'\1\2', text)
-    # cleaned_text = re.sub(r'(\w+)\s*\n\s*(\w+)', r'\1\2', cleaned_text)
     return cleaned_text
 
-def extract_text_from_pdf(pdf_path):
+def extract_text_from_pdf(pdf_path) -> str:
     """Извлекает текст из PDF, проверяя, есть ли текст или изображения."""
     pdf_document = fitz.open(pdf_path)
+    extracted_text = ''
 
-    for page_number in range(len(pdf_document)):
+    for page_number in range(pdf_document.page_count):
         page = pdf_document.load_page(page_number)
 
         text = page.get_text()
         if text.strip():
-            print(f'Текст на странице {page_number + 1}:\n{text}\n')
+            extracted_text += text + '\n'
         else:
-            print(f'На странице {page_number + 1} нет текста.'
-                  f' Пытаемся извлечь текст из изображений.')
-            extract_text_from_images(page, page_number)
+            extracted_text += extract_text_from_images(page) + '\n'
 
     pdf_document.close()
+    return extracted_text.strip()
 
 
-def extract_text_from_images(page, page_number):
+def extract_text_from_images(page):
     """Извлекает текст из изображений на странице."""
     images = page.get_images(full=True)
+    extracted_text = ''
 
     for img_index, img in enumerate(images):
         xref = img[0]
@@ -57,17 +57,6 @@ def extract_text_from_images(page, page_number):
             config='--psm 3'
         )
         cleaned_text = clean_text(text)
+        extracted_text += cleaned_text + '\n'
 
-        with open(
-                f"extracted_text_page_{page_number + 1}"
-                f"_img_{img_index + 1}.txt", "w", encoding="utf-8"
-        ) as text_file:
-            text_file.write(cleaned_text)
-            print(
-                f"Изображение {img_index + 1} на странице "
-                f"{page_number + 1} обработано. Текст сохранен."
-                )
-
-if __name__ == '__main__':
-    pdf_path = '2.pdf'
-    extract_text_from_pdf(pdf_path)
+    return extracted_text.strip()
