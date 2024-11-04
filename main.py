@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 
 from handlers import questions
 
+
 load_dotenv('.env')
 TOKEN = os.environ.get('TELEGRAM_TOKEN')
+
 
 async def main():
     bot = Bot(token=TOKEN)
