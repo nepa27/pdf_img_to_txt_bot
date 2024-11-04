@@ -1,5 +1,4 @@
-import os
-from os import path
+from os import listdir, path, remove
 
 from aiogram import Bot, Router, F
 from aiogram.exceptions import TelegramBadRequest
@@ -21,15 +20,14 @@ from keybords.for_questions import get_answers_kb, yes_no_kb
 from utils.pdf_to_text import extract_text_from_pdf
 from utils.img_to_text import extract_text_from_image
 
-
 router = Router()
 
 
 @router.message(Command('start'))
 async def cmd_start(message: Message):
     await message.answer(
-        'Отправьте файл pdf, из которого нужно извлечь текст.\n'
-        'Для перезапуска бота нажмите /stop, затем /start',
+        'Отправьте файл pdf или изображение, из которого нужно '
+        'извлечь текст.\nДля перезапуска бота нажмите /stop, затем /start',
         reply_markup=ReplyKeyboardRemove()
     )
 
@@ -70,6 +68,21 @@ async def handle_document(message: Message, bot: Bot):
             await message.answer(f'Ошибка при загрузке файла: {str(e)}')
     else:
         await message.answer('Пожалуйста, отправьте PDF-файл или изображение.')
+
+
+@router.message(F.content_type == ContentType.PHOTO)
+async def handle_photo(message: Message, bot: Bot):
+    await message.answer(
+        'Вы отправили изображение. Как вы хотите получить текст?',
+        reply_markup=get_answers_kb()
+    )
+    user_id = message.from_user.id
+    try:
+        file = await bot.get_file(message.photo[-1].file_id)
+        file_path = file.file_path
+        await bot.download_file(file_path, f'{user_id}_file')
+    except BaseException as e:
+        await message.answer(f'Ошибка при загрузке файла: {str(e)}')
 
 
 @router.message(F.text & ~F.text.in_(
@@ -113,15 +126,17 @@ async def send_text_in_message(message: Message):
 async def send_text_in_file(message: Message):
     user_id = message.from_user.id
     file_path = f'{user_id}_extracted_text.txt'
+    files = listdir()
     if not path.exists(file_path):
-        file_path = f'{user_id}_file.pdf'
-        if path.exists(file_path):
-            text = extract_text_from_pdf(file_path)
-        else:
-            text = extract_text_from_image(f'{user_id}_file')
+        for file in files:
+            if file.startswith(f'{user_id}'):
+                if file.endswith('.pdf'):
+                    text = extract_text_from_pdf(file)
+                else:
+                    text = extract_text_from_image(file)
 
-        with open(file_path, 'w', encoding='utf-8') as text_file:
-            text_file.write(text)
+    with open(file_path, 'w', encoding='utf-8') as text_file:
+        text_file.write(text)
 
     input_file = FSInputFile(file_path)
     await message.answer_document(
@@ -137,17 +152,16 @@ async def send_text_in_file(message: Message):
 @router.message(F.text == STOP_WORK)
 async def delete_users_file(message: Message):
     user_id = message.from_user.id
-    file_path = f'{user_id}_extracted_text.txt'
-    if path.exists(file_path):
-        os.remove(file_path)
-
-    file_path = f'{user_id}_file.pdf'
-    os.remove(file_path)
+    files = listdir()
+    for file in files:
+        if file.startswith(f'{user_id}'):
+            remove(file)
 
     await message.answer(
         'Для продолжения работы загрузите новый файл',
         reply_markup=ReplyKeyboardRemove()
     )
+
 
 @router.message(F.text == CONTINUE_WORK)
 async def continue_work(message: Message):
