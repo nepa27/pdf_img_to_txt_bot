@@ -105,9 +105,9 @@ async def send_text_in_message(message: Message):
     user_id = message.from_user.id
     file_path = f'{user_id}_file.pdf'
     if path.exists(file_path):
-        text = extract_text_from_pdf(file_path)
+        text = await extract_text_from_pdf(file_path)
     else:
-        text = extract_text_from_image(f'{user_id}_file')
+        text = await extract_text_from_image(f'{user_id}_file')
     try:
         await message.answer(text)
         await message.answer(
@@ -131,9 +131,9 @@ async def send_text_in_file(message: Message):
         for file in files:
             if file.startswith(f'{user_id}'):
                 if file.endswith('.pdf'):
-                    text = extract_text_from_pdf(file)
+                    text = await extract_text_from_pdf(file)
                 else:
-                    text = extract_text_from_image(file)
+                    text = await extract_text_from_image(file)
 
     with open(file_path, 'w', encoding='utf-8') as text_file:
         text_file.write(text)

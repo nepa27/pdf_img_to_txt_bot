@@ -10,12 +10,12 @@ from constants import PATH_TESSERACT
 
 pytesseract.pytesseract.tesseract_cmd = PATH_TESSERACT
 
-def clean_text(text):
+async def clean_text(text):
     """Удаляет переносы слов из текста."""
     cleaned_text = re.sub(r'(\w+)-\s*(\w+)', r'\1\2', text)
     return cleaned_text
 
-def extract_text_from_pdf(pdf_path) -> str:
+async def extract_text_from_pdf(pdf_path) -> str:
     """Извлекает текст из PDF, проверяя, есть ли текст или изображения."""
     pdf_document = fitz.open(pdf_path)
     extracted_text = ''
@@ -27,13 +27,13 @@ def extract_text_from_pdf(pdf_path) -> str:
         if text.strip():
             extracted_text += text + '\n'
         else:
-            extracted_text += extract_text_from_images(page) + '\n'
+            extracted_text += await extract_text_from_images(page) + '\n'
 
     pdf_document.close()
     return extracted_text.strip()
 
 
-def extract_text_from_images(page):
+async def extract_text_from_images(page):
     """Извлекает текст из изображений на странице."""
     images = page.get_images(full=True)
     extracted_text = ''
@@ -56,7 +56,7 @@ def extract_text_from_images(page):
             image, lang='rus+eng',
             config='--psm 3'
         )
-        cleaned_text = clean_text(text)
+        cleaned_text = await clean_text(text)
         extracted_text += cleaned_text + '\n'
 
     return extracted_text.strip()

@@ -7,7 +7,7 @@ from constants import PATH_TESSERACT
 from .pdf_to_text import clean_text
 
 
-def extract_text_from_image(file):
+async def extract_text_from_image(file):
     """Извлекает текст из изображения."""
     extracted_text = ''
 
@@ -21,7 +21,7 @@ def extract_text_from_image(file):
         config='--psm 3'
     )
 
-    cleaned_text = clean_text(text)
+    cleaned_text = await clean_text(text)
     extracted_text += cleaned_text + '\n'
 
     return extracted_text.strip()
