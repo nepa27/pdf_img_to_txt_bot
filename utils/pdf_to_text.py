@@ -1,8 +1,8 @@
 import io
-from PIL import Image, ImageFilter
 import re
 
 import fitz
+from PIL import Image, ImageFilter
 import pytesseract
 
 from constants import PATH_TESSERACT
