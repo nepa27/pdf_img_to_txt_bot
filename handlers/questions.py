@@ -101,11 +101,11 @@ async def handle_other_content(message: Message):
 
 
 @router.message(F.text == GET_TEXT)
-async def send_text_in_message(message: Message):
+async def send_text_in_message(message: Message, bot:Bot):
     user_id = message.from_user.id
     file_path = f'{user_id}_file.pdf'
     if path.exists(file_path):
-        text = await extract_text_from_pdf(file_path)
+        text = await extract_text_from_pdf(file_path, user_id, bot)
     else:
         text = await extract_text_from_image(f'{user_id}_file')
     try:
@@ -123,7 +123,7 @@ async def send_text_in_message(message: Message):
 
 
 @router.message(F.text == GET_FILE)
-async def send_text_in_file(message: Message):
+async def send_text_in_file(message: Message, bot:Bot):
     user_id = message.from_user.id
     file_path = f'{user_id}_extracted_text.txt'
     files = listdir()
@@ -131,7 +131,7 @@ async def send_text_in_file(message: Message):
         for file in files:
             if file.startswith(f'{user_id}'):
                 if file.endswith('.pdf'):
-                    text = await extract_text_from_pdf(file)
+                    text = await extract_text_from_pdf(file, user_id, bot)
                 else:
                     text = await extract_text_from_image(file)
 

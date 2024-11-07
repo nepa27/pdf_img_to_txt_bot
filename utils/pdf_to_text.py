@@ -4,36 +4,55 @@ import re
 import fitz
 from PIL import Image, ImageFilter
 import pytesseract
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 
 from constants import PATH_TESSERACT
 
 
 pytesseract.pytesseract.tesseract_cmd = PATH_TESSERACT
 
+
 async def clean_text(text):
     """Удаляет переносы слов из текста."""
     cleaned_text = re.sub(r'(\w+)-\s*(\w+)', r'\1\2', text)
     return cleaned_text
 
-async def extract_text_from_pdf(pdf_path) -> str:
+
+def extract_text(image):
+    """Извлекает текст из изображения."""
+    return pytesseract.image_to_string(
+        image, lang='rus+eng',
+        config='--psm 3'
+    )
+
+
+async def extract_text_from_pdf(pdf_path, user_id, bot) -> str:
     """Извлекает текст из PDF, проверяя, есть ли текст или изображения."""
     pdf_document = fitz.open(pdf_path)
     extracted_text = ''
+    total_pages = pdf_document.page_count
 
-    for page_number in range(pdf_document.page_count):
+    for page_number in range(total_pages):
         page = pdf_document.load_page(page_number)
 
         text = page.get_text()
         if text.strip():
             extracted_text += text + '\n'
         else:
-            extracted_text += await extract_text_from_images(page) + '\n'
+            extracted_text += await extract_text_from_images(
+                page,
+                user_id,
+                bot,
+                total_pages,
+                page_number
+            ) + '\n'
 
     pdf_document.close()
     return extracted_text.strip()
 
 
-async def extract_text_from_images(page):
+async def extract_text_from_images(page, user_id, bot, total_pages, page_number):
     """Извлекает текст из изображений на странице."""
     images = page.get_images(full=True)
     extracted_text = ''
@@ -52,11 +71,16 @@ async def extract_text_from_images(page):
 
         image = Image.open(io.BytesIO(image_bytes))
         image = image.filter(ImageFilter.SHARPEN)
-        text = pytesseract.image_to_string(
-            image, lang='rus+eng',
-            config='--psm 3'
-        )
+
+        # Запускаем извлечение текста в отдельном потоке
+        loop = asyncio.get_event_loop()
+        with ThreadPoolExecutor() as pool:
+            text = await loop.run_in_executor(pool, extract_text, image)
+
         cleaned_text = await clean_text(text)
         extracted_text += cleaned_text + '\n'
+
+    progress_message = f'Обработано {page_number + 1} из {total_pages} изображений.'
+    await bot.send_message(chat_id=user_id, text=progress_message)
 
     return extracted_text.strip()
