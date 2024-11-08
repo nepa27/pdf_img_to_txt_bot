@@ -6,6 +6,7 @@ import asyncio
 from concurrent.futures import ThreadPoolExecutor
 
 from constants import PATH_TESSERACT
+from main import logger
 from .pdf_to_text import clean_text
 
 

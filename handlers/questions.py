@@ -14,9 +14,11 @@ from constants import (
     CONTINUE_WORK,
     GET_TEXT,
     GET_FILE,
-    STOP_WORK
+    STOP_WORK,
+    USERS_DATA
 )
 from keybords.for_questions import get_answers_kb, yes_no_kb
+from main import logger
 from utils.pdf_to_text import extract_text_from_pdf
 from utils.img_to_text import extract_text_from_image
 
@@ -25,6 +27,8 @@ router = Router()
 
 @router.message(Command('start'))
 async def cmd_start(message: Message):
+    user_id = message.from_user.id
+    logger.info(f'Пользователь {user_id} запустил бота.')
     await message.answer(
         'Отправьте файл pdf или изображение, из которого нужно '
         'извлечь текст.\nДля перезапуска бота нажмите /stop, затем /start',
@@ -34,6 +38,8 @@ async def cmd_start(message: Message):
 
 @router.message(Command('stop'))
 async def stop_conversation(message: Message):
+    user_id = message.from_user.id
+    logger.info(f'Пользователь {user_id} остановил бота.')
     await message.answer(
         'Бот остановлен. Нажмите /start, чтобы продолжить',
         reply_markup=ReplyKeyboardRemove()
@@ -48,11 +54,13 @@ async def handle_document(message: Message, bot: Bot):
             reply_markup=get_answers_kb()
         )
         user_id = message.from_user.id
+        logger.info(f'Пользователь {user_id} отправил pdf файл на обработку.')
         try:
             file = await bot.get_file(message.document.file_id)
             file_path = file.file_path
-            await bot.download_file(file_path, f'{user_id}_file.pdf')
+            await bot.download_file(file_path, f'{USERS_DATA}/{user_id}_file.pdf')
         except BaseException as e:
+            logger.error(f'Ошибка при загрузке файла: {str(e)}')
             await message.answer(f'Ошибка при загрузке файла: {str(e)}')
     elif message.document.mime_type.startswith('image/'):
         await message.answer(
@@ -60,11 +68,13 @@ async def handle_document(message: Message, bot: Bot):
             reply_markup=get_answers_kb()
         )
         user_id = message.from_user.id
+        logger.info(f'Пользователь {user_id} отправил изображение на обработку.')
         try:
             file = await bot.get_file(message.document.file_id)
             file_path = file.file_path
-            await bot.download_file(file_path, f'{user_id}_file')
+            await bot.download_file(file_path, f'{USERS_DATA}/{user_id}_file')
         except BaseException as e:
+            logger.error(f'Ошибка при загрузке файла: {str(e)}')
             await message.answer(f'Ошибка при загрузке файла: {str(e)}')
     else:
         await message.answer('Пожалуйста, отправьте PDF-файл или изображение.')
@@ -77,11 +87,13 @@ async def handle_photo(message: Message, bot: Bot):
         reply_markup=get_answers_kb()
     )
     user_id = message.from_user.id
+    logger.info(f'Пользователь {user_id} отправил изображение на обработку.')
     try:
         file = await bot.get_file(message.photo[-1].file_id)
         file_path = file.file_path
-        await bot.download_file(file_path, f'{user_id}_file')
+        await bot.download_file(file_path, f'{USERS_DATA}/{user_id}_file')
     except BaseException as e:
+        logger.error(f'Ошибка при загрузке файла: {str(e)}')
         await message.answer(f'Ошибка при загрузке файла: {str(e)}')
 
 
@@ -103,13 +115,15 @@ async def handle_other_content(message: Message):
 @router.message(F.text == GET_TEXT)
 async def send_text_in_message(message: Message, bot:Bot):
     user_id = message.from_user.id
-    file_path = f'{user_id}_file.pdf'
+    file_path = f'{USERS_DATA}/{user_id}_file.pdf'
     if path.exists(file_path):
         text = await extract_text_from_pdf(file_path, user_id, bot)
     else:
-        text = await extract_text_from_image(f'{user_id}_file')
+        text = await extract_text_from_image(f'{USERS_DATA}/{user_id}_file')
     try:
         await message.answer(text)
+        logger.info(f'Бот отправил пользователю '
+                    f'{user_id} обработанный текст.')
         await message.answer(
             'Работа с этим файлом завершена?',
             reply_markup=yes_no_kb()
@@ -119,30 +133,32 @@ async def send_text_in_message(message: Message, bot:Bot):
                              ' У меня не получается отправить '
                              'вам текст одним сообщением. '
                              'Отправляю файл!')
-        await send_text_in_file(message)
+        await send_text_in_file(message, bot)
 
 
 @router.message(F.text == GET_FILE)
 async def send_text_in_file(message: Message, bot:Bot):
     user_id = message.from_user.id
-    file_path = f'{user_id}_extracted_text.txt'
-    files = listdir()
+    file_path = f'{USERS_DATA}/{user_id}_extracted_text.txt'
+    files = listdir(USERS_DATA)
     if not path.exists(file_path):
         for file in files:
             if file.startswith(f'{user_id}'):
                 if file.endswith('.pdf'):
-                    text = await extract_text_from_pdf(file, user_id, bot)
+                    text = await extract_text_from_pdf(f'{USERS_DATA}/{file}', user_id, bot)
                 else:
-                    text = await extract_text_from_image(file)
+                    text = await extract_text_from_image(f'{USERS_DATA}/{file}')
 
-    with open(file_path, 'w', encoding='utf-8') as text_file:
-        text_file.write(text)
+        with open(file_path, 'w', encoding='utf-8') as text_file:
+            text_file.write(text)
 
     input_file = FSInputFile(file_path)
     await message.answer_document(
         input_file,
         caption='Вот ваш текст из отправленного файла.'
     )
+    logger.info(f'Бот отправил пользователю '
+                f'{user_id} обработанный текст.')
     await message.answer(
         'Работа с этим файлом завершена?',
         reply_markup=yes_no_kb()
@@ -152,15 +168,17 @@ async def send_text_in_file(message: Message, bot:Bot):
 @router.message(F.text == STOP_WORK)
 async def delete_users_file(message: Message):
     user_id = message.from_user.id
-    files = listdir()
+    files = listdir(USERS_DATA)
     for file in files:
         if file.startswith(f'{user_id}'):
-            remove(file)
-
+            remove(f'{USERS_DATA}/{file}')
+            logger.info(f'Пользовательский файл '
+                        f'{file} был удален.')
     await message.answer(
         'Для продолжения работы загрузите новый файл',
         reply_markup=ReplyKeyboardRemove()
     )
+
 
 
 @router.message(F.text == CONTINUE_WORK)
