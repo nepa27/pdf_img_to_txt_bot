@@ -13,15 +13,16 @@ from .pdf_to_text import clean_text
 def extract_text(image):
     """Извлекает текст из изображения."""
     return pytesseract.image_to_string(
-        image, lang='rus+eng',
-        config='--psm 3'
+        image,
+        lang="rus+eng",
+        config="--psm 3"
     )
 
 
 # Асинхронная функция для обработки изображения
 async def extract_text_from_image(file):
     """Извлекает текст из изображения асинхронно."""
-    extracted_text = ''
+    extracted_text = ""
 
     # Открываем изображение
     image = Image.open(file)
@@ -36,6 +37,6 @@ async def extract_text_from_image(file):
 
     # Очищаем текст
     cleaned_text = await clean_text(text)
-    extracted_text += cleaned_text + '\n'
+    extracted_text += cleaned_text + "\n"
 
     return extracted_text.strip()

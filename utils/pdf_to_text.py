@@ -15,29 +15,21 @@ pytesseract.pytesseract.tesseract_cmd = PATH_TESSERACT
 
 async def clean_text(text):
     """Удаляет переносы слов из текста."""
-    cleaned_text = re.sub(r'(\w+)-\s*(\w+)', r'\1\2', text)
+    cleaned_text = re.sub(r"(\w+)-\s*(\w+)", r"\1\2", text)
     return cleaned_text
 
 
 def extract_text(image):
     """Извлекает текст из изображения."""
-    return pytesseract.image_to_string(
-        image, lang='rus+eng',
-        config='--psm 3'
-    )
+    return pytesseract.image_to_string(image, lang="rus+eng", config="--psm 3")
 
 
 async def extract_text_from_images(
-        page,
-        user_id,
-        bot,
-        total_pages,
-        page_number,
-        progress_message_id=None
+    page, user_id, bot, total_pages, page_number, progress_message_id=None
 ):
     """Извлекает текст из изображений на странице."""
     images = page.get_images(full=True)
-    extracted_text = ''
+    extracted_text = ""
 
     for img_index, img in enumerate(images):
         xref = img[0]
@@ -60,23 +52,21 @@ async def extract_text_from_images(
             text = await loop.run_in_executor(pool, extract_text, image)
 
         cleaned_text = await clean_text(text)
-        extracted_text += cleaned_text + '\n'
+        extracted_text += cleaned_text + "\n"
 
-    # Удаляем предыдущее сообщение, если оно существует
     if progress_message_id is not None:
         try:
             await bot.delete_message(
-                chat_id=user_id,
-                message_id=progress_message_id
+                chat_id=user_id, message_id=progress_message_id
             )
         except Exception as e:
-            logger.error(f'Не удалось удалить сообщение: {e}')
+            logger.error(f"Не удалось удалить сообщение: {e}")
 
-    progress_message = (f'Обработано {page_number + 1} '
-                        f'из {total_pages} изображений.')
+    progress_message = (
+        f"Обработано {page_number + 1} " f"из {total_pages} изображений."
+    )
     new_progress_message = await bot.send_message(
-        chat_id=user_id,
-        text=progress_message
+        chat_id=user_id, text=progress_message
     )
 
     return extracted_text.strip(), new_progress_message.message_id
@@ -85,7 +75,7 @@ async def extract_text_from_images(
 async def extract_text_from_pdf(pdf_path, user_id, bot) -> str:
     """Извлекает текст из PDF, проверяя, есть ли текст или изображения."""
     pdf_document = fitz.open(pdf_path)
-    extracted_text = ''
+    extracted_text = ""
     total_pages = pdf_document.page_count
     progress_message_id = None
 
@@ -94,18 +84,19 @@ async def extract_text_from_pdf(pdf_path, user_id, bot) -> str:
 
         text = page.get_text()
         if text.strip():
-            extracted_text += text + '\n'
+            extracted_text += text + "\n"
         else:
-            (extracted_text_part,
-             progress_message_id) = await extract_text_from_images(
-                page,
-                user_id,
-                bot,
-                total_pages,
-                page_number,
-                progress_message_id
+            (extracted_text_part, progress_message_id) = (
+                await extract_text_from_images(
+                    page,
+                    user_id,
+                    bot,
+                    total_pages,
+                    page_number,
+                    progress_message_id,
+                )
             )
-            extracted_text += extracted_text_part + '\n'
+            extracted_text += extracted_text_part + "\n"
 
     pdf_document.close()
     return extracted_text.strip()

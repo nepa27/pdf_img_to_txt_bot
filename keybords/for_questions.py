@@ -1,12 +1,7 @@
 from aiogram.types import ReplyKeyboardMarkup
 from aiogram.utils.keyboard import ReplyKeyboardBuilder
 
-from constants import (
-    CONTINUE_WORK,
-    GET_TEXT,
-    GET_FILE,
-    STOP_WORK
-)
+from constants import CONTINUE_WORK, GET_TEXT, GET_FILE, STOP_WORK
 
 
 def get_answers_kb() -> ReplyKeyboardMarkup:
@@ -23,6 +18,5 @@ def yes_no_kb() -> ReplyKeyboardMarkup:
     kb.button(text=CONTINUE_WORK)
     kb.adjust(1)
     return kb.as_markup(
-        resize_keyboard=True,
-        input_field_placeholder='Продолжить работу с файлом?'
+        resize_keyboard=True, input_field_placeholder="Продолжить работу с файлом?"
     )
