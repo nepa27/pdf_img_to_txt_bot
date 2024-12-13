@@ -3,7 +3,7 @@
 [![Asyncio](https://img.shields.io/badge/-Asyncio-464646?style=flat-square&logo=Python)](https://docs.python.org/3/library/asyncio.html)
 [![Aiogram](https://img.shields.io/badge/-Aiogram-464646?style=flat-square&logo=Python)](https://aiogram.readthedocs.io/)
 ## Описание
-Бот, который извлекает текст из из pdf-файлов и изображений.
+Бот, который извлекает текст из pdf-файлов и изображений.
 ## Основные особенности
 - Возможность получения извлеченного текста в ответном сообщении;
 - Возможность получения извлеченного текста в файле.
